@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SNIPER — Parent approval</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;background:#0b0b0e;color:#eef0f3;margin:0;padding:24px;display:flex;justify-content:center}
+  .card{max-width:520px;background:#15151b;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:28px}
+  h1{font-size:22px;margin:0 0 12px;letter-spacing:.06em}
+  p{color:#b7bcc4;line-height:1.5}
+  .row{display:flex;gap:12px;margin-top:20px}
+  button{flex:1;padding:14px;border-radius:8px;border:0;font-size:16px;font-weight:600;cursor:pointer}
+  .ok{background:#2e8bff;color:#fff}
+  .no{background:transparent;color:#ff6470;border:1px solid #ff6470}
+  button:disabled{opacity:.5;cursor:default}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>SNIPER</h1>
+  <div id="ask">
+    <p>Your player asked for your approval on their SNIPER lacrosse training account.</p>
+    <p>Approving unlocks <b>team features, leaderboards and sharing</b> for them. Solo training already works.
+       Their shot data is private by default and video never leaves their phone. You can withdraw this approval
+       any time by contacting support.</p>
+    <div class="row">
+      <button class="ok" id="approve">Approve</button>
+      <button class="no" id="decline">Decline</button>
+    </div>
+  </div>
+  <div id="done" class="hide"><p id="doneMsg"></p></div>
+</div>
+<script>
+  // The signed token in the email link is the credential; this page just carries it to the consent
+  // API (a Supabase edge function — HTML pages can't be served from *.supabase.co, hence this page).
+  var API = "https://hoamgklkhrwkgumoxeka.supabase.co/functions/v1/consent";
+  var token = new URLSearchParams(location.search).get("token") || "";
+  function finish(msg){document.getElementById("ask").classList.add("hide");
+    document.getElementById("done").classList.remove("hide");
+    document.getElementById("doneMsg").textContent=msg;}
+  if(!token){finish("This approval link is invalid or incomplete. Ask your player to re-send it from the app.");}
+  function answer(a){
+    document.getElementById("approve").disabled=true;
+    document.getElementById("decline").disabled=true;
+    // text/plain body = no CORS preflight; the function parses JSON out of it.
+    fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({token:token,answer:a})})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(!j.ok){finish("This approval link is invalid or has expired. Ask your player to re-send it from the app.");return;}
+        finish(j.granted
+          ? "Thank you — your player's team features are now unlocked. You can close this page."
+          : "Noted — your player keeps solo training only. If you change your mind, ask them to re-send the request from the app.");
+      })
+      .catch(function(){
+        document.getElementById("approve").disabled=false;
+        document.getElementById("decline").disabled=false;
+        alert("Network problem — please try again.");
+      });
+  }
+  document.getElementById("approve").onclick=function(){answer("approve");};
+  document.getElementById("decline").onclick=function(){answer("decline");};
+</script>
+</body>
+</html>
