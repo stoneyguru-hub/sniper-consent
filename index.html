@@ -21,10 +21,11 @@
 <div class="card">
   <h1>SNIPER</h1>
   <div id="ask">
-    <p>Your player asked for your approval on their SNIPER lacrosse training account.</p>
+    <p id="who">Your player asked for your approval on their SNIPER lacrosse training account.</p>
     <p>Approving unlocks <b>team features, leaderboards and sharing</b> for them. Solo training already works.
        Their shot data is private by default and video never leaves their phone. You can withdraw this approval
        any time by contacting support.</p>
+    <p id="sentTo" style="font-size:13px"></p>
     <div class="row">
       <button class="ok" id="approve">Approve</button>
       <button class="no" id="decline">Decline</button>
@@ -41,6 +42,22 @@
     document.getElementById("done").classList.remove("hide");
     document.getElementById("doneMsg").textContent=msg;}
   if(!token){finish("This approval link is invalid or incomplete. Ask your player to re-send it from the app.");}
+  // Informed consent: show WHO this approves and WHERE the request was addressed. The payload half of
+  // the token is readable base64 (only the SIGNATURE needs the secret, and the server verifies it);
+  // the player name is initials + jersey number by design, never a real name. Tampering with the
+  // payload here just yields an invalid signature server-side.
+  try{
+    var claims=JSON.parse(atob(token.split(".")[0].replace(/-/g,"+").replace(/_/g,"/")));
+    if(claims.minorName){
+      var who=document.getElementById("who");
+      who.innerHTML="Your player <b></b> asked for your approval on their SNIPER lacrosse training account.";
+      who.querySelector("b").textContent=claims.minorName;
+    }
+    if(claims.guardianEmail){
+      document.getElementById("sentTo").textContent="This request was addressed to "+claims.guardianEmail+
+        (claims.exp?" and expires "+new Date(claims.exp*1000).toLocaleDateString()+".":".");
+    }
+  }catch(e){/* older token without a name — the generic copy stands */}
   function answer(a){
     document.getElementById("approve").disabled=true;
     document.getElementById("decline").disabled=true;
